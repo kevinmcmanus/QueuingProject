@@ -2,32 +2,39 @@ library(dplyr)
 
 #poisson arrivals with mean lambda => interarrival time is exponential with rate = lambda
 qsim = function(arr.rate=10, #arrival rate in customers per hour
+                n.server=3,  #number of servers
                 svc.mean=3,  #service time mean in minutes
                 svc.sd=0.5){ #service time stddev in minutes
     
 
-ncust = 60
+ncust = 100 #simulate for 100 customers
 lambda = arr.rate # arrivals per hour
 
 service.mean = svc.mean/60 # 3 minutes mean service time in hours
 service.sd = svc.sd/60
 
 df=data.frame(cust.id = 1:ncust,
-    inter.arrival = rexp(ncust, rate = lambda)) #time in hours from when the last customer arrived
+    inter.arrival = rexp(ncust, rate = lambda)) #time in hours from when the previous customer arrived
 
 df = mutate(df, arrival.time = cumsum(inter.arrival),
                 service.time = max(0,rnorm(ncust, mean = service.mean, sd = service.sd)))
 
-starttime = rep(NA, ncust)
-finishtime = rep(NA, ncust)
+starttime = rep(NA, ncust) #when the i-th customer begins receiving service
+finishtime = rep(NA, ncust) #when the i-th customer is finished being serviced
+serv.avail = rep(0, n.server) #time when the j-th server finishes service and becomes available
 
 for (i in 1:ncust){
-    starttime[i] = max(df$arrival.time[i],ifelse(i==1,0,finishtime[i-1]))
-    finishtime[i] = starttime[i]+df$service.time[i]
+    #find earliest available server
+    which.serv = which(serv.avail == min(serv.avail))[1]
+    
+    #service for the i-th cusotmer starts at the later of when customer arrives and when server is available
+    starttime[i] = max(df$arrival.time[i],serv.avail[which.serv])
+    finishtime[i] = serv.avail[which.serv] = starttime[i]+df$service.time[i]
 }
 
-df = mutate(df, start.time = starttime,
-                finish.time = finishtime,
+df = mutate(df,
+            start.time = starttime,
+            finish.time = finishtime,
             waiting.time = start.time - arrival.time,
             total.time = finish.time - arrival.time)
 
@@ -47,8 +54,14 @@ for (i in 1:nevents) {
     qlength[i] = n.arr-n.fin
 }
 
-list(avg.waiting.time = mean(df$waiting.time),
-     svr.busy.pct = sum(df$service.time)/max(df$finish.time),
+inputs=list(arr.rate=arr.rate,
+            n.server=n.server,
+            svc.mean=svc.mean,
+            svc.sd=svc.sd)
+
+list(inputs = inputs,
+     avg.waiting.time = mean(df$waiting.time),
+     svr.busy.pct = sum(df$service.time)/(n.server*max(df$finish.time)),
      last.cust.arr = max(df$arrival.time),
      q=data.frame(t = t, q=qlength))
 }

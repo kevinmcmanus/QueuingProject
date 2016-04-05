@@ -1,4 +1,4 @@
-runsim <- function(arr.rate, svc.mean, svc.sd){
-    s=qsim(arr.rate, svc.mean, svc.sd)
+runsim <- function(arr.rate, n.server, svc.mean, svc.sd){
+    s=qsim(arr.rate, n.server, svc.mean, svc.sd)
     plotsim(s)
 }
