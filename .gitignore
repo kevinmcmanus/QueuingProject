@@ -75,3 +75,6 @@ Temporary Items
 *.Rproj
 *.csv
 WLE_Report.utf8.md
+*.js
+*.otf
+*.woff
